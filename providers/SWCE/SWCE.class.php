@@ -181,7 +181,7 @@ class SWCE extends \CultureObject\Provider {
         $url = 'https://swce.herokuapp.com/api/v1/objects?per_page=100&api_token='.urlencode($token).'&site='.urlencode($site).'&category='.urlencode($category).'&page='.intval($page);
         
         $result = $this->perform_request($url);
-    
+        
         $current_objects = [];
         $updated = $created = 0;
         $number_of_objects = count($result['data']);
@@ -267,6 +267,7 @@ class SWCE extends \CultureObject\Provider {
         );
         $post_id = wp_insert_post($post);
         $this->update_object_meta($post_id,$doc);
+        $this->import_featured_image($doc['accession-loan-no'], $post_id);
         return $post_id;
     }
     
@@ -282,7 +283,69 @@ class SWCE extends \CultureObject\Provider {
         );
         $post_id = wp_update_post($post);
         $this->update_object_meta($post_id,$doc);
+        $this->import_featured_image($doc['accession-loan-no'], $post_id);
         return $post_id;
+    }
+    
+    function import_featured_image($accession_loan_no, $post_id) {
+        $wpUploadDir = wp_upload_dir();
+        $uploadDir = $this->get_image_upload_directory();
+        $filename = str_replace(array('.','/'), '-', $accession_loan_no) . '.jpg';
+        $filepath = $wpUploadDir['baseurl'] . '/culture-object-swce/'.$filename;
+        $filetype = wp_check_filetype($filepath, null);
+        
+        
+        // copy to the temporary upload directory
+        copy('https://cdn2.swcollectionsexplorer.org.uk/sizer/webroot/img.php?crop-to-fit&width=1800&src=/dmg/images/'.$filename, $uploadDir.'/'.$filename);
+        
+        $attachmentId = $this->get_attachment_id_by_guid($filepath);
+                
+        if ($attachmentId == 0) {
+            // doesn't already exist
+            $attachmentData = array(
+                'guid'           => $filepath, 
+                'post_mime_type' => $filetype['type'],
+                'post_title'     => preg_replace('/\.[^.]+$/', '', $filename),
+                'post_content'   => '',
+                'post_status'    => 'inherit'
+            );
+            
+            // Insert the attachment.
+            $attachmentId = wp_insert_attachment($attachmentData, $uploadDir.'/'.$filename, $post_id);
+        }
+        
+        // Make sure that this file is included, as wp_generate_attachment_metadata() depends on it.
+        require_once( ABSPATH . 'wp-admin/includes/image.php' );
+
+        // Generate the metadata for the attachment, and update the database record.
+        $attachmentMetaData = wp_generate_attachment_metadata($attachmentId, $uploadDir.'/'.$filename);
+        wp_update_attachment_metadata($attachmentId, $attachmentMetaData);
+        
+        // attach to the post
+        set_post_thumbnail($post_id, $attachmentId);
+    }
+    
+    function get_attachment_id_by_guid($guid) {
+        global $wpdb;
+        
+        $result = $wpdb->get_results("SELECT * FROM `{$wpdb->prefix}posts` WHERE `guid` = '".$guid."'");
+        
+        if (isset($result[0])) {
+            return $result[0]->ID;
+        }
+        
+        return 0;
+    }
+    
+    function get_image_upload_directory() {
+        $wpUploadDir = wp_upload_dir();
+        $uploadDir = $wpUploadDir['basedir'] . '/culture-object-swce';
+        
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir);
+        }
+        
+        return $uploadDir;
     }
     
     function set_category($post_id, $category_array) {

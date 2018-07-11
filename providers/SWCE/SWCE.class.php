@@ -176,6 +176,8 @@ class SWCE extends \CultureObject\Provider {
         $category = get_option('cos_provider_category_slug');
         if (empty($category)) $category = '';
         
+        $collectionFilter = get_option('cos_provider_collection_filter', true);
+        
         $url = 'https://swce.herokuapp.com/api/v1/objects?per_page=100&api_token='.urlencode($token).'&site='.urlencode($site).'&category='.urlencode($category).'&page='.intval($page);
         
         $result = $this->perform_request($url);
@@ -185,16 +187,20 @@ class SWCE extends \CultureObject\Provider {
         $number_of_objects = count($result['data']);
         
         foreach($result['data'] as $doc) {
-	        $doc['_cos_object_id'] = $doc['accession-loan-no'];
-            $object_exists = $this->object_exists($doc['accession-loan-no']);
-            if (!$object_exists) {
-                $current_objects[] = $this->create_object($doc);
-                $import_status[] = __("Created object", 'culture-object').': '.$doc['accession-loan-no'];
-                $created++;
-            } else {
-                $current_objects[] = $this->update_object($doc);
-                $import_status[] = __("Updated object", 'culture-object').': '.$doc['accession-loan-no'];
-                $updated++;
+            if (!$collectionFilter || stripos($doc['collection-name'], $collectionFilter) !== false) {
+            
+                $doc['_cos_object_id'] = $doc['accession-loan-no'];
+                $object_exists = $this->object_exists($doc['accession-loan-no']);
+                if (!$object_exists) {
+                    $current_objects[] = $this->create_object($doc);
+                    $import_status[] = __("Created object", 'culture-object').': '.$doc['accession-loan-no'];
+                    $created++;
+                } else {
+                    $current_objects[] = $this->update_object($doc);
+                    $import_status[] = __("Updated object", 'culture-object').': '.$doc['accession-loan-no'];
+                    $updated++;
+                }
+                
             }
         }
         

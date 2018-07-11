@@ -6,7 +6,7 @@ class SWCE extends \CultureObject\Provider {
     
     private $provider = array(
         'name' => 'SWCE',
-        'version' => '1.3.1',
+        'version' => '1.3.2',
         'developer' => 'Thirty8 Digital',
         'cron' => false,
         'ajax' => true
@@ -35,8 +35,11 @@ class SWCE extends \CultureObject\Provider {
         register_setting('cos_provider_settings', 'cos_provider_site_id');
         register_setting('cos_provider_settings', 'cos_provider_api_token');
         register_setting('cos_provider_settings', 'cos_provider_category_slug');
+        register_setting('cos_provider_settings', 'cos_provider_collection_filter');
         
         add_settings_field('cos_provider_site_id', __('SWCE Site ID','culture-object'), array($this,'generate_settings_field_input_text'), 'cos_provider_settings', 'cos_provider_settings', array('field'=>'cos_provider_site_id'));
+        
+        add_settings_field('cos_provider_collection_filter', __('SWCE Collection Filter','culture-object'), array($this,'generate_settings_field_input_text'), 'cos_provider_settings', 'cos_provider_settings', array('field'=>'cos_provider_collection_filter', 'placeholder' => 'optional collection filter'));
         
         add_settings_field('cos_provider_category_slug', __('SWCE Category Slug','culture-object'), array($this,'generate_settings_field_input_text'), 'cos_provider_settings', 'cos_provider_settings', array('field'=>'cos_provider_category_slug', 'placeholder' => 'optional category slug'));
         
